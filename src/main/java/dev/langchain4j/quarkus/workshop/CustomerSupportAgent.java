@@ -1,11 +1,18 @@
 package dev.langchain4j.quarkus.workshop;
 
-import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.service.guardrail.InputGuardrails;
+import jakarta.enterprise.context.SessionScoped;
+
+import org.eclipse.microprofile.faulttolerance.ExecutionContext;
+import org.eclipse.microprofile.faulttolerance.Fallback;
+import org.eclipse.microprofile.faulttolerance.FallbackHandler;
+import org.eclipse.microprofile.faulttolerance.Retry;
+import org.eclipse.microprofile.faulttolerance.Timeout;
+
+import dev.langchain4j.service.SystemMessage;
 import io.quarkiverse.langchain4j.RegisterAiService;
 import io.quarkiverse.langchain4j.ToolBox;
-import io.smallrye.mutiny.Multi;
-import jakarta.enterprise.context.SessionScoped;
 
 @SessionScoped
 @RegisterAiService
@@ -27,5 +34,18 @@ public interface CustomerSupportAgent {
     @InputGuardrails(PromptInjectionGuard.class)
     @ToolBox(BookingRepository.class)
     //@McpToolBox("weather")
+    @Timeout(5000)
+    @Retry(maxRetries = 3, delay = 100, abortOn = InputGuardrailException.class)
+    @Fallback(value = CustomerSupportAgentFallback.class, skipOn = InputGuardrailException.class)
     String chat(String userMessage);
+
+    public static class CustomerSupportAgentFallback implements FallbackHandler<String> {
+
+        private static final String EMPTY_RESPONSE = "Failed to get a response from the AI Model. Are you sure it's up and running, and configured correctly?";
+        @Override
+        public String handle(ExecutionContext context) {
+            return EMPTY_RESPONSE;
+        }
+
+    }
 }
