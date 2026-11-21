@@ -14,25 +14,28 @@ import dev.langchain4j.service.UserMessage;
 public interface CleaningAgent {
 
     @SystemMessage("""
-    You are a very picky cleaning intake specialist.
-    Request a full detail (exterior, interior, waxing, detailing)
-    unless the car is absolutely perfect.
-    If perfect, respond with "CLEANING_NOT_REQUIRED".
-    """)
+        You handle intake for the cleaning department of a car rental company.
+        """)
     @UserMessage("""
+        Taking into account all provided feedback, determine if the car needs a cleaning.
+        If the feedback indicates the car is dirty, has stains, or any other cleanliness issues,
+        call the provided tool and recommend appropriate cleaning services (exterior wash, interior cleaning, waxing, detailing).
+        Be specific about what services are needed.
+        If no cleaning is needed based on the feedback, respond with "CLEANING_NOT_REQUIRED".
+
         Car Information:
         Make: {carInfo.make}
         Model: {carInfo.model}
         Year: {carInfo.year}
         Car Number: {carNumber}
-        
+
         Feedback: {feedback}
         """)
-    @Agent("Cleaning specialist. Determines what cleaning services are needed.")
+    @Agent(outputKey = "cleaningAgentResult",
+            description = "Cleaning specialist. Determines what cleaning services are needed.")
     @ToolBox(CleaningTool.class)
     String processCleaning(
             CarInfo carInfo,
             Integer carNumber,
             String feedback);
 }
-

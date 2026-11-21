@@ -4,7 +4,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
-import com.carmanagement.agentic.agents.CleaningAgent;
+import com.carmanagement.agentic.workflow.CarProcessingWorkflow;
+import com.carmanagement.model.CarConditions;
 import com.carmanagement.model.CarInfo;
 import com.carmanagement.model.CarStatus;
 
@@ -13,11 +14,8 @@ import com.carmanagement.model.CarStatus;
  */
 @ApplicationScoped
 public class CarManagementService {
-
-        
-
     @Inject
-    CleaningAgent cleaningAgent;
+    CarProcessingWorkflow carProcessingWorkflow;
 
     /**
      * Process a car return from any operation.
@@ -33,16 +31,19 @@ public class CarManagementService {
             return "Car not found with number: " + carNumber;
         }
 
-        // Process the car result
-        String result = cleaningAgent.processCleaning(carInfo, carNumber, feedback);
+        // Process the car return using the workflow
+        CarConditions carConditions = carProcessingWorkflow.processCarReturn(carInfo, carNumber, feedback);
 
-        if (result.toUpperCase().contains("CLEANING_NOT_REQUIRED")) {
+        // Update the car's condition with the result from CarConditionFeedbackAgent
+        carInfo.condition = carConditions.generalCondition();
+
+        // If cleaning was not required, make the car available to rent
+        if (!carConditions.cleaningRequired()) {
             carInfo.status = CarStatus.AVAILABLE;
-            carInfo.persist();
         }
 
-        return result;
+        carInfo.persist();
+
+        return carConditions.generalCondition();
     }
-
 }
-
